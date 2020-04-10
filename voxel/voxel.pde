@@ -4,7 +4,7 @@ QueasyCam cam;
 color marron = color(219, 105, 29); 
 
 int chunk[][][];
-int chunkSize = 16;
+int chunkSize = 32;
 int chunkHeight = 256;
 
 float posicion;
@@ -63,7 +63,7 @@ void setup() {
 
 void caraAtras(float x, float y, float z) {
     //fill(marron);
-    fill(100, 25, 164);
+    fill(100, 25, 164); // morado
     vertex(x + 0, y + 0, z + 0);
     vertex(x + 0, y + 0, z + 1);
     vertex(x + 0, y + 1, z + 0);
@@ -75,7 +75,7 @@ void caraAtras(float x, float y, float z) {
 
 void caraFrente(float x, float y, float z) {
     //fill(marron);
-    fill(25, 100, 164);
+    fill(25, 100, 164); // azul
     vertex(x + 1, y + 0, z + 1);
     vertex(x + 1, y + 0, z + 0);
     vertex(x + 1, y + 1, z + 0);
@@ -132,7 +132,7 @@ void caraDerecha(float x, float y, float z) {
 
 void generateWorld(boolean moving) {
   if (moving) {
-    posicion += 0.001;
+    posicion += 0.005;
   } else {
     posicion = 0;
   }
@@ -143,8 +143,12 @@ void generateWorld(boolean moving) {
     for (int j = 0; j < chunkSize; j++) {
       float altura = map(noise(xoff, yoff), 0, 1, chunkHeight / 2, 0);
       chunk[i][(int)Math.floor(altura)][j] = block.DIRT.getBlock();
-      for (int k = (int)Math.floor(altura) + 1; k < chunkHeight; k++) {
-        chunk[i][k][j] = block.DIRT.getBlock();
+      for (int k = 0; k < chunkHeight; k++) {
+        if (k > (int)Math.floor(altura)) {
+          chunk[i][k][j] = block.DIRT.getBlock();
+        } else {
+          chunk[i][k][j] = block.AIR.getBlock();
+        }
       }
       
       xoff += 0.01;
@@ -162,7 +166,7 @@ void renderWorld(boolean moving) {
         if (chunk[i][k][j] == block.DIRT.getBlock()) {
           cubo(i, k, j, color(0, 255, 0));
           if (moving) {
-            chunk[i][k][j] = block.AIR.getBlock();
+            chunk[i][k][j] = block.DIRT.getBlock();
           }
         }
       }
@@ -174,41 +178,41 @@ void renderWorld(boolean moving) {
 void cubo(float x, float y, float z, color c) {
   beginShape(TRIANGLES);
   
-  
+  //println(x + ":" + y + ":" + z);
   // ABAJO
-  if (/*y + 1 == chunkHeight ||*/ (y > 0 && y + 1 < chunkHeight && chunk[(int)x][(int)y + 1][(int)z] == block.AIR.getBlock())) {
+  if ((y + 1 == chunkHeight && y > 0 && chunk[(int)x][(int)y][(int)z] == block.AIR.getBlock()) || (y >= 0 && y + 1 < chunkHeight && chunk[(int)x][(int)y + 1][(int)z] == block.AIR.getBlock())) {
     caraAbajo(x, y, z);
   }
 
       
   // ARRIBA
-  if (/*y - 1 == -1 ||*/ (y >= 0 && y < chunkHeight && chunk[(int)x][(int)y - 1][(int)z] == block.AIR.getBlock())) {
+  if ((y - 1 == -1 && chunk[(int)x][(int)y][(int)z] == block.AIR.getBlock()) || (y >= 0 && y <= chunkHeight && chunk[(int)x][(int)y - 1][(int)z] == block.AIR.getBlock())) {
     fill(c);
     caraArriba(x, y, z);
   }
 
   
   
-  // IZQUIERDA: si se descomenta, hay que poner z >= 0 en la condicion, asi en todas y en los z + 1 < chunksize, quitar el + 1
-  if (/*z - 1 == -1 ||*/ (z > 0 && z < chunkSize && chunk[(int)x][(int)y][(int)z - 1] == block.AIR.getBlock())) {
+  // IZQUIERDA: si se descomenta, hay que poner z >= 0 en la condicion, asi en todas y en los z + 1 < chunksize, quitar el + 1 y los - 1
+  if ((z - 1 == -1 && chunk[(int)x][(int)y][(int)z] == block.AIR.getBlock()) || (z > 0 && z <= chunkSize && chunk[(int)x][(int)y][(int)z - 1] == block.AIR.getBlock())) {
     caraIzquierda(x, y, z);
   }
 
 
   // DERECHA
-  if (/*z + 1 == chunkSize ||*/ (z > 0 && z + 1 < chunkSize && chunk[(int)x][(int)y][(int)z + 1] == block.AIR.getBlock())) {
+  if ((z + 1 == chunkSize && chunk[(int)x][(int)y][(int)z] == block.AIR.getBlock()) || (z >= 0 && z + 1 < chunkSize && chunk[(int)x][(int)y][(int)z + 1] == block.AIR.getBlock())) {
     caraDerecha(x, y, z); 
   }
   
     
   // ATRAS
-  if (/*x - 1 == -1 ||*/ (x > 0 && x < chunkSize && chunk[(int)x - 1][(int)y][(int)z] == block.AIR.getBlock())) {
+  if ((x - 1 == -1 && chunk[(int)x][(int)y][(int)z] == block.AIR.getBlock()) || (x > 0 && x <= chunkSize && chunk[(int)x - 1][(int)y][(int)z] == block.AIR.getBlock())) {
     caraAtras(x, y, z); 
   }
 
 
   // FRENTE
-  if (/*x + 1 == chunkSize ||*/ (x > 0 && x + 1 < chunkSize && chunk[(int)x + 1][(int)y][(int)z] == block.AIR.getBlock())) {
+  if ((x + 1 == chunkSize && chunk[(int)x - 1][(int)y][(int)z] == block.AIR.getBlock()) || (x >= 0 && x + 1 < chunkSize && chunk[(int)x + 1][(int)y][(int)z] == block.AIR.getBlock())) {
     caraFrente(x, y, z); 
   }
   
@@ -222,8 +226,10 @@ void draw() {
   hint(ENABLE_DEPTH_TEST);
   noStroke();
 
+  renderWorld(true);
+  generateWorld(true);
   
-  renderWorld(false);
+  println(posicion);
 
   camera();
   hint(DISABLE_DEPTH_TEST);  
