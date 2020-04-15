@@ -10,12 +10,13 @@ color madera = color(166, 91, 12);
 color hojas = color(13, 128, 0);
 
 int chunk[][][];
-int chunkSize = 64;
+int chunkSize = 22;
 int chunkHeight = 256;
 
 int alturaAgua = 195;
 
-float posicion = 0;
+float posicionx = 0;
+float posicionz = 0;
 float velocidad = 0;
 long seed = 0;
 
@@ -159,17 +160,17 @@ void caraDerecha(float x, float y, float z) {
 ArrayList<PVector> listaArboles;
 
 void generateWorld() {
-  posicion += velocidad;
+  posicionx += velocidad;
   
   listaArboles = new ArrayList<PVector>();
   
   noiseSeed(seed);
   randomSeed(seed);
 
-  float yoff = posicion;
-  for (int i = 0; i < chunkSize; i++) {
-    float xoff = 0;
-    for (int j = 0; j < chunkSize; j++) {
+  float yoff = posicionx;
+  for (int j = 0; j < chunkSize; j++) {
+    float xoff = posicionz;
+    for (int i = 0; i < chunkSize; i++) {
       float altura = map(noise(xoff, yoff), 0, 1, chunkHeight / 2, chunkHeight - 10);
       chunk[i][(int)Math.floor(altura)][j] = block.DIRT.getBlock();
       
@@ -354,11 +355,17 @@ void keyPressed() {
   }
   
   if (key == '.') {
-    posicion += 0.01;
+    posicionx += 0.01;
     generateWorld();
   } else if (key == ',') {
+    posicionx -= 0.01;
     generateWorld();
-    posicion -= 0.01;
+  } else if (key == 'o') {
+    posicionz += 0.01;
+    generateWorld();
+  } else if (key == 'p') {
+    posicionz -= 0.01;
+    generateWorld();
   }
 
 }
