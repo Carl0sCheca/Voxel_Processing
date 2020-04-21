@@ -45,12 +45,14 @@ float inc = 0.01;
 
 static int chunkDistance = 16;
 
-boolean DEBUG_CHUNKFACES = false;
+boolean DEBUG_CHUNKFACES = true;
 
 
-Queue<HashMap.Entry<PVector, Chunk>> toSerializeQueue = new ConcurrentLinkedQueue<HashMap.Entry<PVector, Chunk>>();
+ConcurrentLinkedQueue<HashMap.Entry<PVector, Chunk>> toSerializeQueue = new ConcurrentLinkedQueue<HashMap.Entry<PVector, Chunk>>();
+ConcurrentLinkedQueue<PVector> toDeSerializeQueue = new ConcurrentLinkedQueue<PVector>();
 
 Thread serializador;
+Thread deserializador;
 
 static enum block {
   AIR((short)0), 
@@ -84,59 +86,78 @@ void setup() {
   cam.sensitivity = 0.5;
   cam.position = new PVector(0, chunkHeight-22, 0);
   
-  serializador = new Thread(new Runnable() {
-    public void run() {
-      while (true) {
-        if (!toSerializeQueue.isEmpty()) {
-          for (HashMap.Entry<PVector, Chunk> map : toSerializeQueue) {
-            serializar(map.getValue(), map.getKey());
-            toSerializeQueue.remove(map);
-          }
-        }
-      }
-    }
-  });
+  //serializador = new Thread(new Runnable() {
+  //  public void run() {
+  //    while (true) {
+  //      try {
+  //        Thread.sleep(5000);
+  //        if (!toSerializeQueue.isEmpty()) {
+  //          for (HashMap.Entry<PVector, Chunk> map : toSerializeQueue) {
+  //            serializar(map.getValue(), map.getKey());
+  //            toSerializeQueue.remove(map);
+  //          }
+  //        }
+  //      } catch (Exception e) {
+  //        println(e);
+  //      }
+  //    }
+  //  }
+  //});
   
-  serializador.start();
+  //deserializador = new Thread(new Runnable() {
+  //  public void run() {
+  //    while (true) {
+  //      try {
+  //        Thread.sleep(6000);
+  //        if (!toDeSerializeQueue.isEmpty()) {
+  //          for (PVector pos : toDeSerializeQueue) {
+  //            Chunk a = deserializar(pos);
+  //            generateChunk((int)pos.x, (int)pos.z, a.getChunk());
+  //            toDeSerializeQueue.remove(pos);
+  //          }
+  //        }
+  //      } catch (Exception e) {
+  //        println(e);
+  //      }
+  //    }
+  //  }
+  //});
   
-  //generateWorld();
+  //serializador.start();
+  //deserializador.start();
 }
-
-
-void generateWorld() {
-  
-  for (int j = 0; j < 6; j++) {
-    for (int i = 0; i < 6; i++) {
-      generateChunk(i, j);    
-    }
-  }
-  
-  //generateChunk(0, 0);
-  //generateChunk(1, 0);
-  
-}
-
 
 void generateTerrainChunk(int x, int z, short[][][] chunkData) {
   float zoff = z * inc * chunkSize;
   for (int j = 0; j < chunkSize; j++) {
     float xoff = x * inc * chunkSize;
     for (int i = 0; i < chunkSize; i++) {
-      float altura = map(noise(xoff, zoff), 0, 1, chunkHeight / 2, chunkHeight - 10);
-      chunkData[i][(int)Math.ceil(altura)][j] = 1;
+      float altura = map(noise(xoff, 0, zoff), 0, 1, chunkHeight / 2, chunkHeight - 10);
+      chunkData[i][(int)Math.ceil(altura)][j] = block.DIRT.id;
 
+      float yoff = 0;
       for (int k = 0; k < chunkHeight; k++) {
         if (k > (int)Math.ceil(altura)) {
-          chunkData[i][k][j] = block.DIRT.id;
+          float cave = noise(xoff, yoff, zoff);
+          
+          if (cave >= 0.5) {
+            chunkData[i][k][j] = block.AIR.id;
+          } else {
+            chunkData[i][k][j] = block.DIRT.id;
+          }
+          
+          
         } else {
           chunkData[i][k][j] = block.AIR.id;
         }
+        yoff += inc;
       }
 
       xoff += inc;
     }
     zoff += inc;
   }
+  
 }
 
 void generateChunk(int x, int z, short[][][] chunkData) {
@@ -219,8 +240,9 @@ void chunkControl() {
         if (!exists) {
           generateChunk(i, j);
         } else {
-          Chunk chunk = deserializar(new PVector(i, 0, j));
-          generateChunk(i, j, chunk.getChunk());
+          //toDeSerializeQueue.add(new PVector(i, 0, j));
+          //Chunk chunk = deserializar(new PVector(i, 0, j));
+          //generateChunk(i, j, chunk.getChunk());
         }
       }
     }
@@ -286,10 +308,11 @@ void keyPressed() {
   if (key == ESC) {
     key = 0;
     noLoop();
-    serializador.interrupt();
-    for (HashMap.Entry<PVector, Chunk> p : chunks.entrySet()) {
-      serializar(p.getValue(), p.getKey());
-    }
+    //serializador.interrupt();
+    //deserializador.interrupt();
+    //for (HashMap.Entry<PVector, Chunk> p : chunks.entrySet()) {
+    //  serializar(p.getValue(), p.getKey());
+    //}
     exit();
   }
   
@@ -311,19 +334,26 @@ void keyPressed() {
       println("Pone bloque");
       Chunk elem = chunks.get(new PVector(x, 0, z));
       short chunk[][][] = elem.chunk;
-      chunk[posx][(int)(cam.position.y)][posz] = 1;
-      
+      try {
+        chunk[posx][(int)(cam.position.y)][posz] = 1;
+      } catch (Exception e) {
+        println("fuera de limites");
+      }
       generateChunk(x, z, chunk);
-      serializar(elem, new PVector((int)(Math.abs(cam.position.x % chunkSize)), (int)(Math.abs(cam.position.z % chunkSize))));
+      //serializar(elem, new PVector((int)(Math.abs(cam.position.x % chunkSize)), (int)(Math.abs(cam.position.z % chunkSize))));
       
     } else if (key == 'c') {
       println("Quita bloque");
       Chunk elem = chunks.get(new PVector(x, 0, z));
       short chunk[][][] = elem.chunk;
-      chunk[posx][(int)(cam.position.y)][posz] = 0;
+      try {
+        chunk[posx][(int)(cam.position.y)][posz] = 0;
+      } catch (Exception e) {
+        println("fuera de limites");
+      }
       
       generateChunk(x, z, chunk);
-      serializar(elem, new PVector((int)(Math.abs(cam.position.x % chunkSize)), (int)(Math.abs(cam.position.z % chunkSize))));
+      //serializar(elem, new PVector((int)(Math.abs(cam.position.x % chunkSize)), (int)(Math.abs(cam.position.z % chunkSize))));
     }
   }
 }
@@ -459,5 +489,27 @@ void generateBlockChunk(short[][][] chunkData) {
         }
       }
     }
+  }
+}
+
+void generacionRara(int x, int z, short[][][] chunkData) {
+  float zoff = z * inc * chunkSize;
+  for (int j = 0; j < chunkSize; j++) {
+    float xoff = x * inc * chunkSize;
+    for (int i = 0; i < chunkSize; i++) {
+      float yoff = 0;
+      for (int k = 0; k < chunkHeight; k++) {
+        float coso = noise(xoff, yoff, zoff);
+
+        if (coso >= 0.5) {
+          //println(coso);
+          chunkData[i][k][j] = block.DIRT.id;
+        }
+        
+        yoff += inc;
+      }
+      xoff += inc;
+    }
+    zoff += inc;
   }
 }
