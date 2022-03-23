@@ -1,8 +1,8 @@
 import java.io.*;
 
-static class Chunk implements Serializable {
+class Chunk {
   private short chunk[][][];
-  private transient PShape mesh;
+  private PShape mesh;
 
   private boolean generated;
   
